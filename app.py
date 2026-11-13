@@ -5,32 +5,99 @@ import plotly.express as px
 import plotly.graph_objects as go
 from pathlib import Path
 
-# ==================================================
-# CONFIGURACIÓN GENERAL
-# ==================================================
+# =========================================================
+# 1. CONFIGURACIÓN Y DISEÑO
+# =========================================================
 
 st.set_page_config(
-    page_title="Análisis Balanceados S.A.S.",
+    page_title="Balanceados S.A.S. | Análisis operativo",
     page_icon="📊",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
-st.title("📊 Análisis Estadístico y Operativo")
-st.subheader("Balanceados S.A.S. — Planta Berástegui")
-st.markdown(
-    "Análisis de los resultados de la encuesta aplicada "
-    "a 50 participantes para identificar oportunidades "
-    "de mejoramiento operativo y productivo."
-)
+st.markdown("""
+<style>
+    .main {
+        background-color: #f7f9fc;
+    }
 
-# ==================================================
-# CARGA DE DATOS
-# ==================================================
+    .block-container {
+        padding-top: 1.5rem;
+        padding-bottom: 2rem;
+    }
 
-ARCHIVO = Path(__file__).parent / "datos_balanceados_anonimizados.csv"
+    h1, h2, h3 {
+        color: #17365D;
+    }
 
-columnas = [
-    "encuestado",
+    .hero {
+        background: linear-gradient(115deg, #17365D, #2878A8);
+        padding: 28px;
+        border-radius: 16px;
+        color: white;
+        margin-bottom: 22px;
+    }
+
+    .hero h1 {
+        color: white;
+        font-size: 30px;
+        margin-bottom: 5px;
+    }
+
+    .hero p {
+        color: #eaf3fb;
+        font-size: 16px;
+        margin-bottom: 0;
+    }
+
+    .section-note {
+        background-color: #eaf2f8;
+        border-left: 5px solid #2878A8;
+        padding: 13px;
+        border-radius: 7px;
+        margin: 10px 0 18px 0;
+    }
+
+    div[data-testid="stMetric"] {
+        background-color: white;
+        border: 1px solid #e1e8ef;
+        padding: 15px;
+        border-radius: 12px;
+        box-shadow: 0 2px 7px rgba(0,0,0,0.04);
+    }
+
+    div[data-testid="stMetricLabel"] {
+        color: #526579;
+    }
+
+    .footer {
+        text-align: center;
+        color: #718096;
+        font-size: 13px;
+        padding: 18px;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+st.markdown("""
+<div class="hero">
+    <h1>📊 Análisis estadístico y operativo</h1>
+    <p>Balanceados S.A.S. — Planta Berástegui</p>
+    <p>Diagnóstico de procesos, eficiencia y oportunidades de mejoramiento · 2026</p>
+</div>
+""", unsafe_allow_html=True)
+
+# =========================================================
+# 2. NOMBRES DE LAS VARIABLES
+# =========================================================
+
+archivo = Path(__file__).parent / "datos_balanceados_anonimizados.csv"
+
+p11 = "P11_eficiencia_operativa_1_10"
+p12 = "P12_horas_semanales_cuellos_botella"
+
+variables = [
     "P1_planificacion_turnos",
     "P2_mantenimiento_no_programado",
     "P3_mermas_materia_prima",
@@ -40,212 +107,318 @@ columnas = [
     "P7_repuestos_herramientas",
     "P8_coordinacion_interdepartamental",
     "P9_protocolos_SSOMA",
-    "P10_eficiencia_OEE_tecnologia",
-    "P11_eficiencia_operativa_1_10",
-    "P12_horas_semanales_cuellos_botella"
+    "P10_eficiencia_OEE_tecnologia"
 ]
 
+variables_negativas = variables[:3]
+variables_positivas = variables[3:]
+
 labels = {
-    "P1_planificacion_turnos": "P1. Retrasos en la planificación de turnos",
-    "P2_mantenimiento_no_programado": "P2. Tiempos muertos por mantenimiento no programado",
+    "P1_planificacion_turnos": "P1. Planificación de turnos y retrasos",
+    "P2_mantenimiento_no_programado": "P2. Mantenimiento no programado",
     "P3_mermas_materia_prima": "P3. Mermas y desperdicio de materia prima",
     "P4_calidad_insumos": "P4. Calidad y estandarización de insumos",
-    "P5_inspeccion_proceso": "P5. Control e inspección en línea de proceso",
+    "P5_inspeccion_proceso": "P5. Control e inspección del proceso",
     "P6_capacitacion_tecnica": "P6. Capacitación técnica del personal",
     "P7_repuestos_herramientas": "P7. Disponibilidad de repuestos y herramientas",
-    "P8_coordinacion_interdepartamental": "P8. Coordinación y comunicación entre áreas",
-    "P9_protocolos_SSOMA": "P9. Cumplimiento de protocolos de seguridad",
-    "P10_eficiencia_OEE_tecnologia": "P10. Eficiencia global del equipo (OEE / Tecnología)",
-    "P11_eficiencia_operativa_1_10": "P11. Nivel general de eficiencia operativa",
-    "P12_horas_semanales_cuellos_botella": "P12. Horas semanales perdidas por cuellos de botella"
+    "P8_coordinacion_interdepartamental": "P8. Coordinación entre áreas",
+    "P9_protocolos_SSOMA": "P9. Protocolos de seguridad (SSOMA)",
+    "P10_eficiencia_OEE_tecnologia": "P10. Eficiencia de equipos (OEE / tecnología)",
+    p11: "P11. Eficiencia operativa general",
+    p12: "P12. Horas semanales perdidas por cuellos de botella"
 }
 
-variables_escala = list(labels.keys())[:10]
-p11 = "P11_eficiencia_operativa_1_10"
-p12 = "P12_horas_semanales_cuellos_botella"
+columnas = ["encuestado"] + variables + [p11, p12]
+
+# =========================================================
+# 3. CARGA Y VALIDACIÓN DE LA BASE
+# =========================================================
 
 @st.cache_data
-def cargar_datos():
-    datos = pd.read_csv(ARCHIVO)
+def cargar_datos(ruta):
+    datos = pd.read_csv(ruta)
 
-    faltantes = [col for col in columnas if col not in datos.columns]
+    faltantes = [c for c in columnas if c not in datos.columns]
 
     if faltantes:
         raise ValueError(
-            "Faltan columnas en el archivo CSV: " + ", ".join(faltantes)
+            "No se encontraron estas columnas: " + ", ".join(faltantes)
         )
 
     datos = datos[columnas].copy()
 
-    for col in variables_escala + [p11, p12]:
+    for col in variables + [p11, p12]:
         datos[col] = pd.to_numeric(datos[col], errors="coerce")
 
     return datos
 
 
-try:
-    df = cargar_datos()
-except Exception as e:
-    st.error(f"No fue posible cargar la base de datos: {e}")
-    st.info(
-        "Verifica que datos_balanceados_anonimizados.csv "
-        "esté guardado en el mismo repositorio que app.py."
+if not archivo.exists():
+    st.error(
+        "No se encontró datos_balanceados_anonimizados.csv. "
+        "Verifica que esté en el mismo repositorio que app.py."
     )
     st.stop()
 
-# ==================================================
-# VALIDACIONES Y VARIABLES
-# ==================================================
+try:
+    df = cargar_datos(str(archivo))
+except Exception as error:
+    st.error(f"Error al cargar la base de datos: {error}")
+    st.stop()
 
-total_encuestados = len(df)
+total = len(df)
 
-# ==================================================
-# PESTAÑAS
-# ==================================================
+# =========================================================
+# 4. FUNCIONES DE APOYO
+# =========================================================
 
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    "📌 Resumen",
-    "📊 Distribución de respuestas",
-    "🔗 Relaciones entre variables",
-    "📁 Datos y metodología",
-    "🔎 Diagnóstico y oportunidades"
-])
+def nivel_escala(valor):
+    """Clasificación orientativa del promedio de una escala 1 a 5."""
+    if valor <= 1.80:
+        return "Nunca"
+    elif valor <= 2.60:
+        return "Casi nunca"
+    elif valor <= 3.40:
+        return "Algunas veces"
+    elif valor <= 4.20:
+        return "Casi siempre"
+    else:
+        return "Siempre"
 
-# ==================================================
-# TAB 1: RESUMEN
-# ==================================================
 
-with tab1:
+def clasificar_variable(variable, promedio):
+    """
+    P1-P3: frecuencia alta significa mayor presencia de una situación
+    desfavorable.
+
+    P4-P10: se supone que los enunciados describen prácticas positivas.
+    Esta interpretación debe verificarse con la redacción exacta.
+    """
+
+    if variable in variables_negativas:
+        if promedio >= 3.41:
+            return "Atención prioritaria"
+        elif promedio >= 2.61:
+            return "Seguimiento y control"
+        else:
+            return "Menor frecuencia reportada"
+
+    if promedio <= 2.60:
+        return "Prioridad de mejoramiento"
+    elif promedio <= 3.40:
+        return "Oportunidad de fortalecimiento"
+    elif promedio <= 4.20:
+        return "Comportamiento favorable"
+    else:
+        return "Frecuencia alta de la práctica"
+
+
+def crear_grafico_barras(datos, x, y, titulo, eje_x, eje_y):
+    fig = px.bar(
+        datos,
+        x=x,
+        y=y,
+        text=y,
+        title=titulo,
+        color=y,
+        color_continuous_scale="Blues"
+    )
+
+    fig.update_traces(
+        texttemplate="%{text:.2f}",
+        textposition="outside",
+        marker_line_width=0
+    )
+
+    fig.update_layout(
+        xaxis_title=eje_x,
+        yaxis_title=eje_y,
+        coloraxis_showscale=False,
+        plot_bgcolor="white",
+        paper_bgcolor="white",
+        margin=dict(l=20, r=20, t=65, b=30)
+    )
+
+    return fig
+
+
+# =========================================================
+# 5. MENÚ DE NAVEGACIÓN
+# =========================================================
+
+st.sidebar.title("📚 Panel de navegación")
+st.sidebar.write("Análisis de Balanceados S.A.S.")
+
+pestana = st.sidebar.radio(
+    "Selecciona una sección:",
+    [
+        "📌 Resumen general",
+        "📊 Distribución de respuestas",
+        "🔗 Relaciones entre variables",
+        "📁 Datos y metodología",
+        "🔎 Diagnóstico y oportunidades"
+    ]
+)
+
+st.sidebar.divider()
+st.sidebar.caption("Proyecto académico · 2026")
+st.sidebar.caption(f"Registros cargados: {total}")
+
+# =========================================================
+# 6. RESUMEN GENERAL
+# =========================================================
+
+if pestana == "📌 Resumen general":
 
     st.header("Resumen general del estudio")
 
-    st.write(
-        "Esta sección presenta los principales indicadores "
-        "obtenidos a partir de la información recolectada."
-    )
+    st.markdown("""
+    <div class="section-note">
+    Esta sección presenta los principales indicadores de la encuesta
+    aplicada a los participantes de Balanceados S.A.S.
+    </div>
+    """, unsafe_allow_html=True)
 
-    col1, col2, col3, col4 = st.columns(4)
+    c1, c2, c3, c4 = st.columns(4)
 
-    col1.metric(
-        "Participantes",
-        total_encuestados
-    )
-
-    col2.metric(
-        "Variables analizadas",
-        12
-    )
-
-    col3.metric(
-        "Eficiencia operativa",
-        f"{df[p11].mean():.2f}/10"
-    )
-
-    col4.metric(
-        "Horas perdidas por semana",
-        f"{df[p12].mean():.2f} h"
-    )
+    c1.metric("Participantes", total)
+    c2.metric("Variables", 12)
+    c3.metric("Eficiencia promedio", f"{df[p11].mean():.2f}/10")
+    c4.metric("Horas perdidas", f"{df[p12].mean():.2f} h")
 
     st.divider()
 
     st.subheader("Promedio de las dimensiones operativas")
 
-    promedios = df[variables_escala].mean().reset_index()
-    promedios.columns = ["Variable", "Promedio"]
-    promedios["Nombre"] = promedios["Variable"].map(labels)
+    promedios = df[variables].mean().reset_index()
+    promedios.columns = ["Código", "Promedio"]
+    promedios["Dimensión"] = promedios["Código"].map(labels)
 
     fig = px.bar(
         promedios,
-        x="Nombre",
-        y="Promedio",
+        x="Promedio",
+        y="Dimensión",
+        orientation="h",
+        color="Promedio",
+        color_continuous_scale="Blues",
         text="Promedio",
-        title="Promedio de las respuestas P1 a P10",
-        range_y=[0, 5]
+        title="Resultados promedio de P1 a P10",
+        range_x=[0, 5]
+    )
+
+    fig.update_traces(
+        texttemplate="%{text:.2f}",
+        textposition="outside"
     )
 
     fig.update_layout(
-        xaxis_title="Dimensiones evaluadas",
-        yaxis_title="Promedio (escala de 1 a 5)",
-        xaxis_tickangle=-45
+        yaxis={"categoryorder": "total ascending"},
+        xaxis_title="Promedio (escala de 1 a 5)",
+        yaxis_title="",
+        coloraxis_showscale=False,
+        plot_bgcolor="white"
     )
 
     st.plotly_chart(fig, use_container_width=True)
 
-    st.caption(
-        "Escala: 1 = Nunca, 2 = Casi nunca, 3 = Algunas veces, "
-        "4 = Casi siempre y 5 = Siempre. P1, P2 y P3 miden "
-        "situaciones desfavorables; P4 a P10 se interpretan "
-        "como prácticas positivas, de acuerdo con la redacción "
-        "de los enunciados."
+    st.info(
+        "Importante: P1, P2 y P3 representan situaciones desfavorables "
+        "cuando ocurren con mayor frecuencia. Los promedios de P4 a P10 "
+        "se interpretan como prácticas favorables únicamente si sus "
+        "enunciados están redactados en sentido positivo."
     )
 
     st.subheader("Indicadores principales")
 
-    resumen = pd.DataFrame({
-        "Indicador": [
-            "Promedio de eficiencia operativa",
-            "Mediana de eficiencia operativa",
-            "Promedio de horas perdidas por semana",
-            "Mediana de horas perdidas por semana"
-        ],
-        "Resultado": [
-            round(df[p11].mean(), 2),
-            round(df[p11].median(), 2),
-            round(df[p12].mean(), 2),
-            round(df[p12].median(), 2)
-        ]
-    })
+    col1, col2 = st.columns(2)
 
-    st.dataframe(resumen, hide_index=True, use_container_width=True)
+    with col1:
+        st.metric(
+            "Mediana de eficiencia",
+            f"{df[p11].median():.2f}/10"
+        )
 
-# ==================================================
-# TAB 2: DISTRIBUCIÓN DE RESPUESTAS
-# ==================================================
+    with col2:
+        st.metric(
+            "Mediana de horas perdidas",
+            f"{df[p12].median():.2f} h"
+        )
 
-with tab2:
+    st.subheader("Lectura general")
+
+    st.write(
+        "Los datos permiten examinar las condiciones de planificación, "
+        "mantenimiento, desperdicio de materia prima, calidad, capacitación "
+        "y disponibilidad de recursos. También permiten observar el nivel "
+        "general de eficiencia operativa y las horas reportadas como perdidas "
+        "por cuellos de botella."
+    )
+
+# =========================================================
+# 7. DISTRIBUCIÓN DE RESPUESTAS
+# =========================================================
+
+elif pestana == "📊 Distribución de respuestas":
 
     st.header("Distribución de respuestas")
 
     st.write(
-        "En esta sección se observa cómo se distribuyen "
-        "las respuestas de los participantes en cada variable."
+        "Explora la frecuencia de las respuestas y el comportamiento "
+        "de cada una de las dimensiones evaluadas."
     )
 
-    variable_seleccionada = st.selectbox(
-        "Selecciona una variable para analizar:",
-        variables_escala,
+    variable = st.selectbox(
+        "Selecciona una variable:",
+        variables + [p11, p12],
         format_func=lambda x: labels[x]
     )
 
-    frecuencias = (
-        df[variable_seleccionada]
-        .value_counts()
-        .sort_index()
-        .reset_index()
-    )
+    valores = df[variable].dropna()
 
-    frecuencias.columns = ["Respuesta", "Cantidad"]
+    if not valores.empty:
 
-    fig = px.bar(
-        frecuencias,
-        x="Respuesta",
-        y="Cantidad",
-        text="Cantidad",
-        title=f"Distribución: {labels[variable_seleccionada]}",
-        color="Respuesta"
-    )
+        frecuencias = (
+            valores.value_counts()
+            .sort_index()
+            .rename_axis("Respuesta")
+            .reset_index(name="Cantidad")
+        )
 
-    fig.update_layout(
-        xaxis_title="Valor de respuesta (1 a 5)",
-        yaxis_title="Número de participantes",
-        xaxis=dict(dtick=1)
-    )
+        fig = px.bar(
+            frecuencias,
+            x="Respuesta",
+            y="Cantidad",
+            text="Cantidad",
+            color="Cantidad",
+            color_continuous_scale="Blues",
+            title=f"Distribución de {labels[variable]}"
+        )
 
-    st.plotly_chart(fig, use_container_width=True)
+        fig.update_traces(textposition="outside")
 
-    st.subheader("Estadísticas descriptivas")
+        fig.update_layout(
+            plot_bgcolor="white",
+            xaxis_title="Valor de respuesta",
+            yaxis_title="Número de participantes",
+            coloraxis_showscale=False
+        )
 
-    estadisticas = df[variables_escala].describe().T
+        st.plotly_chart(fig, use_container_width=True)
+
+        c1, c2, c3 = st.columns(3)
+
+        c1.metric("Promedio", f"{valores.mean():.2f}")
+        c2.metric("Mediana", f"{valores.median():.2f}")
+        c3.metric("Desviación estándar", f"{valores.std():.2f}")
+
+    else:
+        st.warning("No hay datos disponibles para esta variable.")
+
+    st.divider()
+
+    st.subheader("Estadísticas descriptivas de P1 a P10")
+
+    estadisticas = df[variables].describe().T
     estadisticas.index = [labels[x] for x in estadisticas.index]
     estadisticas = estadisticas.round(2)
 
@@ -254,52 +427,53 @@ with tab2:
         use_container_width=True
     )
 
-    st.subheader("Comparación de dispersión")
+    st.subheader("Comparación de la dispersión")
 
-    datos_boxplot = df[variables_escala].melt(
+    datos_box = df[variables].melt(
         var_name="Variable",
         value_name="Respuesta"
     )
 
-    datos_boxplot["Variable"] = datos_boxplot["Variable"].map(labels)
+    datos_box["Variable"] = datos_box["Variable"].map(labels)
 
     fig_box = px.box(
-        datos_boxplot,
+        datos_box,
         x="Variable",
         y="Respuesta",
-        title="Distribución y dispersión de las respuestas"
+        color="Variable",
+        title="Distribución de las respuestas por dimensión"
     )
 
     fig_box.update_layout(
+        showlegend=False,
         xaxis_title="Dimensiones",
-        yaxis_title="Respuesta (1 a 5)",
-        xaxis_tickangle=-45
+        yaxis_title="Respuesta",
+        xaxis_tickangle=-45,
+        plot_bgcolor="white"
     )
 
     st.plotly_chart(fig_box, use_container_width=True)
 
-# ==================================================
-# TAB 3: RELACIONES ENTRE VARIABLES
-# ==================================================
+# =========================================================
+# 8. RELACIONES ENTRE VARIABLES
+# =========================================================
 
-with tab3:
+elif pestana == "🔗 Relaciones entre variables":
 
     st.header("Relaciones entre variables")
 
     st.write(
-        "Esta sección permite explorar la asociación estadística "
-        "entre las variables de la encuesta."
+        "Esta sección permite explorar las asociaciones estadísticas "
+        "entre las variables de la investigación."
     )
 
     metodo = st.selectbox(
-        "Selecciona el método de correlación:",
+        "Método de correlación:",
         ["Pearson", "Spearman"]
     )
 
-    metodo_calculo = metodo.lower()
-
-    matriz = df[variables_escala + [p11, p12]].corr(
-        method=metodo_calculo
+    matriz = df[variables + [p11, p12]].corr(
+        method=metodo.lower()
     )
 
     fig_corr = px.imshow(
@@ -309,110 +483,111 @@ with tab3:
         color_continuous_scale="RdBu_r",
         zmin=-1,
         zmax=1,
-        title=f"Matriz de correlación — {metodo}"
+        title=f"Matriz de correlación de {metodo}"
+    )
+
+    fig_corr.update_layout(
+        height=650,
+        plot_bgcolor="white"
     )
 
     st.plotly_chart(fig_corr, use_container_width=True)
 
     st.divider()
 
-    st.subheader("Relación entre eficiencia y horas perdidas")
+    st.subheader("Eficiencia operativa y horas perdidas")
 
     datos_relacion = df[[p11, p12]].dropna()
 
-    correlacion = datos_relacion[p11].corr(
-        datos_relacion[p12],
-        method=metodo_calculo
-    )
+    if len(datos_relacion) >= 2:
 
-    col1, col2, col3 = st.columns(3)
+        correlacion = datos_relacion[p11].corr(
+            datos_relacion[p12],
+            method=metodo.lower()
+        )
 
-    col1.metric(
-        "Correlación",
-        f"{correlacion:.3f}"
-    )
+        a, b, c = st.columns(3)
 
-    col2.metric(
-        "Eficiencia promedio",
-        f"{datos_relacion[p11].mean():.2f}/10"
-    )
+        a.metric("Correlación", f"{correlacion:.3f}")
+        b.metric("Eficiencia promedio", f"{datos_relacion[p11].mean():.2f}/10")
+        c.metric("Horas perdidas promedio", f"{datos_relacion[p12].mean():.2f} h")
 
-    col3.metric(
-        "Horas perdidas promedio",
-        f"{datos_relacion[p12].mean():.2f} h"
-    )
+        fig_scatter = px.scatter(
+            datos_relacion,
+            x=p12,
+            y=p11,
+            title="Relación entre eficiencia y horas perdidas",
+            labels={
+                p12: "Horas semanales perdidas",
+                p11: "Eficiencia operativa (1 a 10)"
+            },
+            trendline=None
+        )
 
-    fig_relacion = px.scatter(
-        datos_relacion,
-        x=p12,
-        y=p11,
-        trendline="ols",
-        title="Eficiencia operativa frente a horas perdidas",
-        labels={
-            p12: "Horas semanales perdidas",
-            p11: "Eficiencia operativa (1 a 10)"
-        }
-    )
+        fig_scatter.update_traces(
+            marker=dict(size=11, opacity=0.75)
+        )
 
-    st.plotly_chart(fig_relacion, use_container_width=True)
+        fig_scatter.update_layout(
+            plot_bgcolor="white"
+        )
 
-    if abs(correlacion) < 0.10:
-        fuerza = "prácticamente nula"
-    elif abs(correlacion) < 0.30:
-        fuerza = "muy débil"
-    elif abs(correlacion) < 0.50:
-        fuerza = "débil a moderada"
-    elif abs(correlacion) < 0.70:
-        fuerza = "moderada"
+        st.plotly_chart(fig_scatter, use_container_width=True)
+
+        if abs(correlacion) < 0.10:
+            fuerza = "prácticamente nula"
+        elif abs(correlacion) < 0.30:
+            fuerza = "muy débil"
+        elif abs(correlacion) < 0.50:
+            fuerza = "débil a moderada"
+        elif abs(correlacion) < 0.70:
+            fuerza = "moderada"
+        else:
+            fuerza = "fuerte"
+
+        direccion = (
+            "positiva" if correlacion > 0
+            else "negativa" if correlacion < 0
+            else "nula"
+        )
+
+        st.info(
+            f"La correlación de {metodo} es {direccion} y {fuerza} "
+            f"(r = {correlacion:.3f}). Este resultado describe la "
+            "asociación observada en la muestra y no demuestra causalidad."
+        )
+
     else:
-        fuerza = "fuerte"
+        st.warning("No hay suficientes registros para calcular la correlación.")
 
-    if correlacion > 0:
-        direccion = "positiva"
-    elif correlacion < 0:
-        direccion = "negativa"
-    else:
-        direccion = "nula"
+# =========================================================
+# 9. DATOS Y METODOLOGÍA
+# =========================================================
 
-    st.write(
-        f"La correlación de {metodo} entre la eficiencia operativa "
-        f"y las horas perdidas es {direccion} y {fuerza} "
-        f"(r = {correlacion:.3f})."
-    )
-
-    st.info(
-        "La correlación permite identificar asociaciones estadísticas, "
-        "pero no demuestra que una variable cause cambios en otra."
-    )
-
-# ==================================================
-# TAB 4: DATOS Y METODOLOGÍA
-# ==================================================
-
-with tab4:
+elif pestana == "📁 Datos y metodología":
 
     st.header("Datos y metodología")
 
-    st.subheader("Características del estudio")
+    st.subheader("Características de la investigación")
 
-    st.write("""
-    **Caso de estudio:** Balanceados S.A.S. — Planta Berástegui.
+    datos_metodo = [
+        ("Caso de estudio", "Balanceados S.A.S. — Planta Berástegui"),
+        ("Enfoque", "Cuantitativo"),
+        ("Diseño", "No experimental y transversal"),
+        ("Técnica", "Encuesta"),
+        ("Participantes", f"{total} registros"),
+        ("Instrumento", "Cuestionario de 12 variables"),
+        ("Análisis", "Estadística descriptiva y correlaciones exploratorias")
+    ]
 
-    **Enfoque:** Cuantitativo.
+    tabla_metodo = pd.DataFrame(
+        datos_metodo,
+        columns=["Característica", "Descripción"]
+    )
 
-    **Diseño:** No experimental y transversal.
+    st.table(tabla_metodo)
 
-    **Técnica de recolección:** Encuesta.
-
-    **Participantes:** 50 personas encuestadas.
-
-    **Instrumento:** Cuestionario compuesto por 12 variables.
-
-    **Análisis:** Estadística descriptiva y análisis exploratorio
-    de correlaciones.
-    """)
-
-    st.subheader("Escala de medición")
+    st.subheader("Escala de medición de P1 a P10")
 
     escala = pd.DataFrame({
         "Valor": [1, 2, 3, 4, 5],
@@ -425,13 +600,17 @@ with tab4:
         ]
     })
 
-    st.dataframe(escala, hide_index=True, use_container_width=True)
+    st.dataframe(
+        escala,
+        hide_index=True,
+        use_container_width=True
+    )
 
-    st.subheader("Variables analizadas")
+    st.subheader("Variables de la investigación")
 
     tabla_variables = pd.DataFrame({
-        "Código": [f"P{i}" for i in range(1, 13)],
-        "Variable": [labels[x] for x in variables_escala + [p11, p12]]
+        "Código": [f"P{i}" for i in range(1, 11)] + ["P11", "P12"],
+        "Dimensión": [labels[x] for x in variables + [p11, p12]]
     })
 
     st.dataframe(
@@ -443,9 +622,9 @@ with tab4:
     st.subheader("Base de datos anonimizada")
 
     st.write(
-        "La base utilizada contiene los registros numéricos de "
-        "los participantes, sin publicar nombres, documentos "
-        "de identidad ni otros datos personales."
+        "Se presenta la base numérica utilizada en el análisis. "
+        "La información publicada no incluye nombres ni documentos "
+        "de identidad de los participantes."
     )
 
     st.dataframe(
@@ -455,65 +634,61 @@ with tab4:
     )
 
     st.download_button(
-        label="Descargar base de datos anonimizada",
+        "⬇️ Descargar base anonimizada",
         data=df.to_csv(index=False).encode("utf-8"),
         file_name="datos_balanceados_anonimizados.csv",
         mime="text/csv"
     )
 
-    st.subheader("Limitaciones metodológicas")
+    st.warning(
+        "Los resultados corresponden a los participantes encuestados "
+        "en Balanceados S.A.S. No deben generalizarse estadísticamente "
+        "a todas las PYMES de Córdoba. Las correlaciones no prueban "
+        "relaciones de causa y efecto."
+    )
 
-    st.warning("""
-    Los resultados corresponden a los participantes encuestados
-    en Balanceados S.A.S. y no permiten generalizar estadísticamente
-    los hallazgos a todas las PYMES del departamento de Córdoba.
+# =========================================================
+# 10. DIAGNÓSTICO Y OPORTUNIDADES
+# =========================================================
 
-    Las correlaciones identifican asociaciones, pero no prueban
-    relaciones de causa y efecto. Además, los promedios de las
-    respuestas ordinales se utilizan como resúmenes descriptivos.
-    """)
-
-# ==================================================
-# TAB 5: DIAGNÓSTICO Y OPORTUNIDADES
-# ==================================================
-
-with tab5:
+elif pestana == "🔎 Diagnóstico y oportunidades":
 
     st.header("Diagnóstico de resultados operativos")
 
-    st.write(
-        "Interpretación de los resultados obtenidos para identificar "
-        "los principales aspectos favorables y las oportunidades "
-        "de mejoramiento de Balanceados S.A.S."
-    )
+    st.markdown("""
+    <div class="section-note">
+    Interpretación de los resultados obtenidos para identificar
+    los aspectos favorables y las oportunidades de mejoramiento
+    de Balanceados S.A.S.
+    </div>
+    """, unsafe_allow_html=True)
 
     st.info(
-        "Escala utilizada: 1 = Nunca, 2 = Casi nunca, "
-        "3 = Algunas veces, 4 = Casi siempre y 5 = Siempre. "
-        "En P1, P2 y P3 una frecuencia alta representa una situación "
-        "desfavorable. En P4 a P10 se interpreta como mayor presencia "
-        "de la práctica evaluada, suponiendo que los enunciados "
-        "están redactados en sentido positivo."
+        "Escala: 1 = Nunca, 2 = Casi nunca, 3 = Algunas veces, "
+        "4 = Casi siempre y 5 = Siempre. P1, P2 y P3 representan "
+        "situaciones desfavorables cuando ocurren con mayor frecuencia. "
+        "La lectura favorable de P4 a P10 depende de que sus enunciados "
+        "estén formulados en sentido positivo."
     )
 
-    # ----------------------------------------------
-    # 1. HORAS PERDIDAS
-    # ----------------------------------------------
+    # ---------------------------------------------
+    # 10.1 HORAS PERDIDAS
+    # ---------------------------------------------
 
     st.subheader("1. Comportamiento de las horas perdidas")
 
-    p12_data = df[p12].dropna()
+    horas = df[p12].dropna()
 
-    if not p12_data.empty:
+    if not horas.empty:
 
         a, b, c, d = st.columns(4)
 
-        a.metric("Promedio semanal", f"{p12_data.mean():.2f} h")
-        b.metric("Mediana", f"{p12_data.median():.2f} h")
-        c.metric("Mínimo", f"{p12_data.min():.2f} h")
-        d.metric("Máximo", f"{p12_data.max():.2f} h")
+        a.metric("Promedio semanal", f"{horas.mean():.2f} h")
+        b.metric("Mediana", f"{horas.median():.2f} h")
+        c.metric("Mínimo", f"{horas.min():.2f} h")
+        d.metric("Máximo", f"{horas.max():.2f} h")
 
-        fig_p12 = px.histogram(
+        fig_horas = px.histogram(
             df,
             x=p12,
             nbins=10,
@@ -521,257 +696,342 @@ with tab5:
             labels={p12: "Horas semanales"}
         )
 
-        st.plotly_chart(fig_p12, use_container_width=True)
+        fig_horas.update_traces(
+            marker_color="#2878A8",
+            marker_line_color="white",
+            marker_line_width=1
+        )
+
+        fig_horas.update_layout(
+            plot_bgcolor="white",
+            xaxis_title="Horas semanales",
+            yaxis_title="Número de participantes"
+        )
+
+        st.plotly_chart(fig_horas, use_container_width=True)
 
         st.write(
             f"Los participantes reportaron un promedio de "
-            f"**{p12_data.mean():.2f} horas semanales** asociadas "
-            "a cuellos de botella. Este resultado evidencia la "
+            f"**{horas.mean():.2f} horas semanales** asociadas "
+            "a cuellos de botella. Este resultado señala la "
             "importancia de revisar las actividades que generan "
-            "interrupciones o demoras."
+            "interrupciones y demoras."
         )
 
-    # ----------------------------------------------
-    # 2. EFICIENCIA OPERATIVA
-    # ----------------------------------------------
+    # ---------------------------------------------
+    # 10.2 EFICIENCIA
+    # ---------------------------------------------
 
     st.subheader("2. Eficiencia operativa")
 
-    p11_data = df[p11].dropna()
+    eficiencia = df[p11].dropna()
 
-    if not p11_data.empty:
+    if not eficiencia.empty:
 
         a, b, c = st.columns(3)
 
-        a.metric("Promedio", f"{p11_data.mean():.2f}/10")
-        b.metric("Mediana", f"{p11_data.median():.2f}")
-        c.metric("Desviación estándar", f"{p11_data.std():.2f}")
+        a.metric("Promedio", f"{eficiencia.mean():.2f}/10")
+        b.metric("Mediana", f"{eficiencia.median():.2f}")
+        c.metric("Desviación estándar", f"{eficiencia.std():.2f}")
 
-        eficiencia_freq = (
-            p11_data.value_counts()
+        frecuencias_eficiencia = (
+            eficiencia.value_counts()
             .sort_index()
             .rename_axis("Calificación")
-            .reset_index(name="Cantidad")
+            .reset_index(name="Participantes")
         )
 
-        fig_p11 = px.bar(
-            eficiencia_freq,
+        fig_eficiencia = px.bar(
+            frecuencias_eficiencia,
             x="Calificación",
-            y="Cantidad",
-            text="Cantidad",
-            title="Distribución de las calificaciones de eficiencia"
+            y="Participantes",
+            text="Participantes",
+            title="Distribución de las calificaciones de eficiencia",
+            color="Participantes",
+            color_continuous_scale="Blues"
         )
 
-        st.plotly_chart(fig_p11, use_container_width=True)
+        fig_eficiencia.update_traces(textposition="outside")
 
-    # ----------------------------------------------
-    # 3. INTERPRETACIÓN DE P1 A P10
-    # ----------------------------------------------
+        fig_eficiencia.update_layout(
+            plot_bgcolor="white",
+            coloraxis_showscale=False
+        )
+
+        st.plotly_chart(fig_eficiencia, use_container_width=True)
+
+    # ---------------------------------------------
+    # 10.3 DIAGNÓSTICO DE P1 A P10
+    # ---------------------------------------------
 
     st.subheader("3. Interpretación de las variables operativas")
 
-    variables_negativas = [
-        "P1_planificacion_turnos",
-        "P2_mantenimiento_no_programado",
-        "P3_mermas_materia_prima"
-    ]
-
-    variables_positivas = [
-        "P4_calidad_insumos",
-        "P5_inspeccion_proceso",
-        "P6_capacitacion_tecnica",
-        "P7_repuestos_herramientas",
-        "P8_coordinacion_interdepartamental",
-        "P9_protocolos_SSOMA",
-        "P10_eficiencia_OEE_tecnologia"
-    ]
-
-    def nivel_escala(valor):
-        if valor <= 1.80:
-            return "Nunca"
-        elif valor <= 2.60:
-            return "Casi nunca"
-        elif valor <= 3.40:
-            return "Algunas veces"
-        elif valor <= 4.20:
-            return "Casi siempre"
-        else:
-            return "Siempre"
-
     resultados = []
 
-    for variable in variables_negativas:
+    for variable in variables:
 
         promedio = df[variable].mean()
-        nivel = nivel_escala(promedio)
-
-        if promedio >= 3.41:
-            interpretacion = "Situación que requiere atención"
-        elif promedio >= 2.61:
-            interpretacion = "Situación presente ocasionalmente"
-        else:
-            interpretacion = "Menor frecuencia reportada"
 
         resultados.append({
+            "Código": variable[:3].upper(),
             "Variable": labels[variable],
             "Promedio": round(promedio, 2),
-            "Frecuencia": nivel,
-            "Interpretación": interpretacion
-        })
-
-    for variable in variables_positivas:
-
-        promedio = df[variable].mean()
-        nivel = nivel_escala(promedio)
-
-        if promedio <= 2.60:
-            interpretacion = "Prioridad de mejoramiento"
-        elif promedio <= 3.40:
-            interpretacion = "Oportunidad de fortalecimiento"
-        elif promedio <= 4.20:
-            interpretacion = "Comportamiento favorable"
-        else:
-            interpretacion = "Fortaleza observada"
-
-        resultados.append({
-            "Variable": labels[variable],
-            "Promedio": round(promedio, 2),
-            "Frecuencia": nivel,
-            "Interpretación": interpretacion
+            "Frecuencia": nivel_escala(promedio),
+            "Interpretación": clasificar_variable(variable, promedio),
+            "Tipo": (
+                "Situación desfavorable"
+                if variable in variables_negativas
+                else "Práctica evaluada"
+            )
         })
 
     diagnostico = pd.DataFrame(resultados)
 
     st.dataframe(
-        diagnostico,
+        diagnostico[
+            ["Código", "Variable", "Promedio", "Frecuencia", "Interpretación"]
+        ],
         hide_index=True,
         use_container_width=True
     )
 
     st.caption(
-        "Los intervalos se utilizan como criterio descriptivo para "
-        "resumir los promedios de la escala de 1 a 5."
+        "Los intervalos de los promedios son criterios descriptivos "
+        "orientativos. No constituyen categorías validadas del instrumento."
     )
 
-    grafico = diagnostico.sort_values(
+    # Gráfico horizontal de resultados
+    grafico_diag = diagnostico.sort_values(
         "Promedio",
         ascending=True
     )
 
     fig_diag = px.bar(
-        grafico,
+        grafico_diag,
         x="Promedio",
         y="Variable",
         orientation="h",
         text="Promedio",
-        title="Promedio de las dimensiones operativas",
+        color="Tipo",
+        color_discrete_map={
+            "Situación desfavorable": "#D97757",
+            "Práctica evaluada": "#2878A8"
+        },
+        title="Resultados promedio de las dimensiones operativas",
         range_x=[0, 5]
+    )
+
+    fig_diag.update_traces(
+        texttemplate="%{text:.2f}",
+        textposition="outside"
+    )
+
+    fig_diag.update_layout(
+        plot_bgcolor="white",
+        xaxis_title="Promedio (1 a 5)",
+        yaxis_title="",
+        legend_title="Tipo de dimensión",
+        margin=dict(l=20, r=40, t=65, b=30)
     )
 
     st.plotly_chart(fig_diag, use_container_width=True)
 
-    # ----------------------------------------------
-    # 4. CORRELACIÓN
-    # ----------------------------------------------
+    st.caption(
+        "Los colores separan las situaciones desfavorables de las "
+        "prácticas evaluadas. Los promedios no deben compararse como "
+        "si todos tuvieran el mismo sentido."
+    )
 
-    st.subheader("4. Relación entre eficiencia y horas perdidas")
+    # ---------------------------------------------
+    # 10.4 PRINCIPALES HALLAZGOS
+    # ---------------------------------------------
+
+    st.subheader("4. Principales hallazgos")
+
+    promedio_p1 = df[variables[0]].mean()
+    promedio_p2 = df[variables[1]].mean()
+    promedio_p3 = df[variables[2]].mean()
+    promedio_p6 = df[variables[5]].mean()
+    promedio_p7 = df[variables[6]].mean()
+
+    promedio_p5 = df[variables[4]].mean()
+    promedio_p9 = df[variables[8]].mean()
+
+    hallazgos = [
+        (
+            "Planificación de turnos",
+            f"P1 presenta un promedio de {promedio_p1:.2f}/5. "
+            "La frecuencia reportada de retrasos requiere seguimiento."
+        ),
+        (
+            "Mantenimiento",
+            f"P2 registra {promedio_p2:.2f}/5. "
+            "Conviene revisar las interrupciones asociadas "
+            "al mantenimiento no programado."
+        ),
+        (
+            "Desperdicio de materia prima",
+            f"P3 obtiene {promedio_p3:.2f}/5. "
+            "Es importante identificar las etapas donde se producen mermas."
+        ),
+        (
+            "Capacitación",
+            f"P6 registra {promedio_p6:.2f}/5. "
+            "La capacitación técnica representa una oportunidad "
+            "de fortalecimiento."
+        ),
+        (
+            "Repuestos y herramientas",
+            f"P7 obtiene {promedio_p7:.2f}/5. "
+            "Es conveniente revisar la disponibilidad de recursos "
+            "para las actividades operativas."
+        ),
+        (
+            "Inspección y seguridad",
+            f"P5 registra {promedio_p5:.2f}/5 y P9 obtiene "
+            f"{promedio_p9:.2f}/5. Si los enunciados están "
+            "formulados positivamente, reflejan una frecuencia "
+            "favorable de estas prácticas."
+        )
+    ]
+
+    for titulo, descripcion in hallazgos:
+        with st.expander(titulo):
+            st.write(descripcion)
+
+    # ---------------------------------------------
+    # 10.5 CORRELACIÓN
+    # ---------------------------------------------
+
+    st.subheader("5. Relación entre eficiencia y horas perdidas")
 
     datos_corr = df[[p11, p12]].dropna()
 
-    r = datos_corr[p11].corr(datos_corr[p12], method="pearson")
+    if len(datos_corr) >= 2:
 
-    if pd.notna(r):
+        r = datos_corr[p11].corr(datos_corr[p12], method="pearson")
 
         st.metric("Correlación de Pearson", f"{r:.3f}")
 
         if abs(r) < 0.10:
-            intensidad = "prácticamente nula"
+            fuerza = "prácticamente nula"
         elif abs(r) < 0.30:
-            intensidad = "muy débil"
+            fuerza = "muy débil"
         elif abs(r) < 0.50:
-            intensidad = "débil a moderada"
+            fuerza = "débil a moderada"
         elif abs(r) < 0.70:
-            intensidad = "moderada"
+            fuerza = "moderada"
         else:
-            intensidad = "fuerte"
+            fuerza = "fuerte"
 
-        if r > 0:
-            direccion = "positiva"
-        elif r < 0:
-            direccion = "negativa"
-        else:
-            direccion = "nula"
+        direccion = (
+            "positiva" if r > 0
+            else "negativa" if r < 0
+            else "nula"
+        )
 
         st.write(
             f"Se encontró una asociación lineal {direccion} y "
-            f"{intensidad} entre las horas perdidas y la eficiencia "
-            f"operativa (r = {r:.3f}). La relación es muy débil, "
-            "por lo que no se observa una asociación lineal importante "
-            "en esta muestra. Esto no demuestra causalidad."
+            f"{fuerza} entre las horas perdidas y la eficiencia "
+            f"operativa (r = {r:.3f}). No se observa una asociación "
+            "lineal importante en esta muestra. Este resultado no "
+            "demuestra causalidad."
         )
 
-    # ----------------------------------------------
-    # 5. OPORTUNIDADES DE MEJORAMIENTO
-    # ----------------------------------------------
+    # ---------------------------------------------
+    # 10.6 OPORTUNIDADES DE MEJORAMIENTO
+    # ---------------------------------------------
 
-    st.subheader("5. Oportunidades de mejoramiento")
+    st.subheader("6. Estrategias de mejoramiento")
 
-    st.markdown("""
-    **Planificación y mantenimiento**
-    - Revisar la programación de turnos para reducir retrasos.
-    - Analizar las causas de las interrupciones por mantenimiento.
-    - Establecer seguimiento preventivo de los equipos.
+    estrategias = [
+        {
+            "Área": "Planificación y mantenimiento",
+            "Acciones": [
+                "Revisar la programación de turnos.",
+                "Identificar las causas de retrasos y paradas.",
+                "Implementar seguimiento preventivo de los equipos."
+            ]
+        },
+        {
+            "Área": "Control de recursos",
+            "Acciones": [
+                "Revisar inventarios de repuestos y herramientas.",
+                "Establecer niveles mínimos de disponibilidad.",
+                "Realizar seguimiento a los recursos que generan demoras."
+            ]
+        },
+        {
+            "Área": "Talento humano",
+            "Acciones": [
+                "Fortalecer la capacitación técnica.",
+                "Realizar seguimiento a las necesidades del personal.",
+                "Mejorar la comunicación entre áreas."
+            ]
+        },
+        {
+            "Área": "Materia prima y calidad",
+            "Acciones": [
+                "Identificar los puntos donde se generan desperdicios.",
+                "Fortalecer la recepción y almacenamiento de insumos.",
+                "Mantener controles e inspecciones durante el proceso."
+            ]
+        },
+        {
+            "Área": "Seguridad y tecnología",
+            "Acciones": [
+                "Mantener el seguimiento a los protocolos SSOMA.",
+                "Revisar el funcionamiento de los equipos.",
+                "Evaluar oportunidades de mejora tecnológica."
+            ]
+        }
+    ]
 
-    **Disponibilidad de recursos**
-    - Revisar el inventario de repuestos y herramientas.
-    - Identificar los recursos cuya falta retrasa las actividades.
-    - Establecer controles para garantizar su disponibilidad.
+    for estrategia in estrategias:
+        with st.expander(estrategia["Área"]):
+            for accion in estrategia["Acciones"]:
+                st.markdown(f"- {accion}")
 
-    **Talento humano y procesos**
-    - Fortalecer los programas de capacitación técnica.
-    - Mantener los controles de calidad e inspección en línea.
-    - Mejorar la coordinación y comunicación entre las áreas.
+    # ---------------------------------------------
+    # 10.7 CONCLUSIÓN
+    # ---------------------------------------------
 
-    **Materia prima y seguridad**
-    - Identificar las etapas donde se generan desperdicios.
-    - Reforzar las prácticas de recepción y almacenamiento.
-    - Mantener el cumplimiento de los protocolos de seguridad.
-    """)
-
-    # ----------------------------------------------
-    # 6. CONCLUSIÓN
-    # ----------------------------------------------
-
-    st.subheader("6. Conclusión del análisis")
+    st.subheader("7. Conclusión general")
 
     st.write(
-        "Los resultados muestran que la empresa presenta aspectos "
-        "favorables relacionados con la inspección de los procesos, "
-        "la calidad de los insumos y el cumplimiento de los protocolos "
-        "de seguridad. Sin embargo, también se identifican oportunidades "
-        "de mejoramiento en la disponibilidad de repuestos y herramientas, "
-        "la capacitación técnica, la planificación de turnos y el "
-        "mantenimiento de los equipos. Además, el promedio de 5.99 horas "
-        "semanales reportadas por cuellos de botella señala la importancia "
-        "de revisar las actividades que generan demoras. En conjunto, "
-        "estos resultados sirven como base para proponer estrategias "
-        "orientadas a reducir desperdicios y mejorar la productividad "
-        "operativa de Balanceados S.A.S."
+        f"Los resultados de la encuesta aplicada a {total} participantes "
+        "de Balanceados S.A.S. permiten identificar aspectos que requieren "
+        "seguimiento en el funcionamiento operativo de la planta. Entre "
+        f"ellos se encuentran los retrasos en la planificación de turnos "
+        f"(P1 = {promedio_p1:.2f}), las interrupciones por mantenimiento "
+        f"no programado (P2 = {promedio_p2:.2f}) y la disponibilidad de "
+        f"repuestos y herramientas (P7 = {promedio_p7:.2f}). También se "
+        f"reportó un promedio de {horas.mean():.2f} horas semanales "
+        "perdidas por cuellos de botella y una calificación promedio "
+        f"de eficiencia operativa de {eficiencia.mean():.2f}/10. "
+        "Estos resultados constituyen una base para formular estrategias "
+        "orientadas a mejorar la planificación, fortalecer el mantenimiento, "
+        "optimizar el uso de los recursos y reducir los desperdicios "
+        "operativos."
     )
 
     st.warning(
         "El diagnóstico es descriptivo y corresponde a los participantes "
-        "encuestados en Balanceados S.A.S. No debe generalizarse a todas "
-        "las PYMES de Córdoba ni interpretarse como prueba de causalidad."
+        "encuestados en Balanceados S.A.S. No permite generalizar "
+        "estadísticamente los resultados a todas las PYMES de Córdoba. "
+        "La interpretación favorable de P4 a P10 debe confirmarse "
+        "con la redacción exacta de cada pregunta."
     )
 
-# ==================================================
-# PIE DE PÁGINA
-# ==================================================
+# =========================================================
+# 11. PIE DE PÁGINA
+# =========================================================
 
 st.divider()
 
-st.caption(
-    "Proyecto académico de análisis estadístico y operativo | "
-    "Balanceados S.A.S. — Planta Berástegui | 2026"
-)
+st.markdown("""
+<div class="footer">
+    Proyecto académico de análisis estadístico y operativo<br>
+    Balanceados S.A.S. — Planta Berástegui | 2026
+</div>
+""", unsafe_allow_html=True)
